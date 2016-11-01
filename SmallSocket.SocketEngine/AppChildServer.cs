@@ -25,13 +25,14 @@ namespace SmallSocket.SocketEngine
         /// <summary>
         /// 启动
         /// </summary>
-        public void Start()
+        public AppChildServer Start()
         {
             if (task == null)
             {
                 task = new Task(new Action(Hand), TaskCreationOptions.LongRunning);
                 task.Start();
             }
+            return this;
         }
 
         //关闭

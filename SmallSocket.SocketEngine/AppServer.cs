@@ -31,7 +31,7 @@ namespace SmallSocket.SocketEngine
 
         private AppChildServer[] servers = null;
 
-        public ISocketListener Listener { get; set; }
+        private ISocketListener _listener;
 
         /// <summary>
         /// appSession会话集合
@@ -47,15 +47,11 @@ namespace SmallSocket.SocketEngine
             servers = new AppChildServer[100];
             for (int i = 0; i < servers.Length; i++)
             {
-                servers[i] = new AppChildServer(i);
-            }
-            foreach (var item in servers)
-            {
-                item.Start();
+                servers[i] = new AppChildServer(i).Start();
             }
 
-            Listener = listener;
-            Listener.Start();
+            _listener = listener;
+            _listener.Start();
         }
 
         /// <summary>
@@ -63,7 +59,7 @@ namespace SmallSocket.SocketEngine
         /// </summary>
         public void Close()
         {
-            Listener.Stop();//停止监听客户端
+            _listener.Stop();//停止监听客户端
             var list = GetAllSession();//关闭所有客户端连接
             foreach (var item in list)
             {
@@ -91,13 +87,22 @@ namespace SmallSocket.SocketEngine
         }
 
         /// <summary>
-        /// 移除会话
+        /// 移除会话：根据key
         /// </summary>
         /// <param name="session">键</param>
         public void RemoveSession(Guid key)
         {
             AppSession session = null;
             appSessions.TryRemove(key, out session);
+        }
+
+        /// <summary>
+        /// 移除会话：根据session
+        /// </summary>
+        /// <param name="session">会话</param>
+        public void RemoveSession(AppSession session)
+        {
+            RemoveSession(session.Key);
         }
 
         /// <summary>
@@ -117,23 +122,26 @@ namespace SmallSocket.SocketEngine
         public AppSession GetSession(Guid key)
         {
             AppSession session = null;
-            if (appSessions.TryGetValue(key, out session))
-            {
-                return session;
-            }
-            else
-            {
-                return null;
-            }
+            appSessions.TryGetValue(key, out session);
+            return session;
         }
 
         /// <summary>
         /// 获取所有会话
         /// </summary>
         /// <returns></returns>
-        public List<AppSession> GetAllSession()
+        public IEnumerable<AppSession> GetAllSession()
         {
-            return appSessions.Values.ToList();
+            return appSessions.Values;
+        }
+
+        public void CloseSession(Guid key)
+        {
+            AppSession session = null;
+            if (appSessions.TryGetValue(key, out session))
+            {
+                session.Close();
+            }
         }
 
     }

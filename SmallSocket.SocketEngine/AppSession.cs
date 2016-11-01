@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading.Tasks;
 
 namespace SmallSocket.SocketEngine
@@ -27,6 +28,22 @@ namespace SmallSocket.SocketEngine
         {
             Key = key;
             Client = client;
+        }
+
+        public async void Start()
+        {
+            while (true)
+            {
+                byte[] buffer = Encoding.ASCII.GetBytes("1234567890");
+                await this.Client.GetStream().WriteAsync(buffer, 0, buffer.Length);
+                await Task.Delay(1000);
+            }
+        }
+
+        public void Close()
+        {
+            this.Client.Client.Dispose();
+            this.Client.GetStream().Dispose();
         }
     }
 }
