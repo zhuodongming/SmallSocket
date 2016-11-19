@@ -12,13 +12,11 @@ namespace SmallSocket.SocketEngine
         static void Main(string[] args)
         {
             //Start appServer
-            IPAddress ipAddress = IPAddress.Any;
-            int port = 12345;
-            IPEndPoint ipEndPoint = new IPEndPoint(ipAddress, port);
-            TcpSocketListener tcpSocketListener = new TcpSocketListener(ipEndPoint);
-
             AppServer appServer = AppServer.GetAppServer();
-            appServer.Start(tcpSocketListener);
+
+            SimpleServerMessageDispatcher dispatcher = new SimpleServerMessageDispatcher();
+            ServerConfiguration config = new ServerConfiguration(dispatcher);
+            appServer.Start(config);
             Console.WriteLine("The server started successfully, press 'quit' to stop it!");
 
             while (!Console.ReadLine().ToLower().Trim().Equals("quit"))

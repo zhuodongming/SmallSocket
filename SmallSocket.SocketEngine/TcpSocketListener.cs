@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SmallSocket.SocketEngine.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -7,17 +8,14 @@ using System.Threading.Tasks;
 
 namespace SmallSocket.SocketEngine
 {
-    public class TcpSocketListener : ISocketListener
+    internal sealed class TcpSocketListener : ISocketListener
     {
-        /// <summary>
-        /// TCP监听器
-        /// </summary>
-        private TcpListener tcpListener;
+        private TcpListener _tcpListener = null;
+        private ServerConfiguration _config = null;
 
-        public TcpSocketListener(IPEndPoint ipEndPoint)
+        public TcpSocketListener(ServerConfiguration config)
         {
-            tcpListener = new TcpListener(ipEndPoint);
-            //tcpListener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);//启用端口共享
+            this._config = config;
         }
 
         public void Start()
@@ -25,27 +23,34 @@ namespace SmallSocket.SocketEngine
             Listener();
         }
 
-        public void Stop()
+        public async void Stop()
         {
-            tcpListener.Stop();
+            this._tcpListener.Stop();
+            await _config.Dispatcher.OnListenerStoped(this);
         }
 
         private async void Listener()
         {
-            tcpListener.Start();
-            while (true)
+            try
             {
-                TcpClient tcpClient = null;
-                try
+                this._tcpListener = new TcpListener(_config.ListenedEndPoint);
+                this._tcpListener.AllowNatTraversal(_config.AllowNatTraversal);
+                //this._tcpListener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);//启用端口共享
+                this._tcpListener.Start(_config.PendingConnectionBacklog);
+                await _config.Dispatcher.OnListenerStarted(this);
+
+                while (true)
                 {
-                    tcpClient = await tcpListener.AcceptTcpClientAsync();//开始监听socket客户端
+                    var tcpClient = await this._tcpListener.AcceptTcpClientAsync();//开始监听socket客户端
+
+                    AppServer.GetAppServer().FetchClient(tcpClient);
                 }
-                catch
-                {
-                    throw;
-                }
-                AppServer.GetAppServer().FetchClient(tcpClient);
+            }
+            catch (Exception ex)
+            {
+                await _config.Dispatcher.OnListenerError(this, ex);
             }
         }
+
     }
 }

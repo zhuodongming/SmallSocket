@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
-namespace SmallSocket.SocketEngine
+namespace SmallSocket.SocketEngine.Interfaces
 {
     public interface ISocketListener
     {

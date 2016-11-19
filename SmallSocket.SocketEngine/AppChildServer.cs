@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SmallSocket.SocketEngine.Interfaces;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,17 +9,19 @@ using System.Threading.Tasks;
 
 namespace SmallSocket.SocketEngine
 {
-    public class AppChildServer
+    internal class AppChildServer
     {
         private CancellationTokenSource cts = new CancellationTokenSource();
 
         private ConcurrentQueue<TcpClient> queue = new ConcurrentQueue<TcpClient>();
 
         public int ID { get; set; }
+        public readonly ServerConfiguration _config = null;
 
-        public AppChildServer(int id)
+        public AppChildServer(int id, ServerConfiguration config)
         {
-            ID = id;
+            this.ID = id;
+            this._config = config;
         }
         Task task = null;
 
@@ -57,7 +60,7 @@ namespace SmallSocket.SocketEngine
                     client.NoDelay = true;//禁用延迟发送数据
                     client.SendTimeout = 60000;//60秒
                     client.ReceiveTimeout = 60000;//60秒
-                    AppSession appSession = new AppSession(Guid.NewGuid(), client);//创建会话
+                    AppSession appSession = new AppSession(Guid.NewGuid(), client, this._config);//创建会话
                     AppServer.GetAppServer().RegisterSession(appSession);//注册会话
                     appSession.Start();
                 }

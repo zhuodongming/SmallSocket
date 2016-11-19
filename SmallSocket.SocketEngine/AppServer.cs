@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SmallSocket.SocketEngine.Interfaces;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,44 +15,56 @@ namespace SmallSocket.SocketEngine
     public sealed class AppServer
     {
         #region 单例设计模式
-        private AppServer()
-        {
+        private AppServer() { }
 
-        }
-
-        private static readonly AppServer appServer = new AppServer();
-
+        private static readonly AppServer _appServer = new AppServer();
         public static AppServer GetAppServer()
         {
-            return appServer;
+            return _appServer;
         }
         #endregion
 
+        private readonly ConcurrentDictionary<Guid, AppSession> _appSessions = new ConcurrentDictionary<Guid, AppSession>();
         private long i = 0;
+        private AppChildServer[] _appChildServers = null;
+        private ServerConfiguration _config = null;
+        private ISocketListener _listener = null;
 
-        private AppChildServer[] servers = null;
-
-        private ISocketListener _listener;
-
-        /// <summary>
-        /// appSession会话集合
-        /// </summary>
-        private readonly ConcurrentDictionary<Guid, AppSession> appSessions = new ConcurrentDictionary<Guid, AppSession>();
-
-        /// <summary>
-        /// 启动服务
-        /// </summary>
-        /// <param name="listener"></param>
-        public void Start(ISocketListener listener)
+        //启动服务
+        public void Start(ServerConfiguration config)
         {
-            servers = new AppChildServer[100];
-            for (int i = 0; i < servers.Length; i++)
+            if (config == null)
             {
-                servers[i] = new AppChildServer(i).Start();
+                throw new ArgumentNullException("config", "argument config is not null");
             }
+            this._config = config;
 
-            _listener = listener;
-            _listener.Start();
+            StartChildServers();
+            StartListen();
+        }
+
+        //启动子服务
+        private void StartChildServers()
+        {
+            this._appChildServers = new AppChildServer[10];
+            for (int i = 0; i < _appChildServers.Length; i++)
+            {
+                this._appChildServers[i] = new AppChildServer(i, _config).Start();
+            }
+        }
+
+        //启动监听
+        private void StartListen()
+        {
+            if (_config.IsTCP == true)
+            {
+                this._listener = new TcpSocketListener(_config);
+            }
+            else
+            {
+                this._listener = new TcpSocketListener(_config);
+            }
+            this._listener.Start();
         }
 
         /// <summary>
@@ -59,11 +72,11 @@ namespace SmallSocket.SocketEngine
         /// </summary>
         public void Close()
         {
-            _listener.Stop();//停止监听客户端
-            var list = GetAllSession();//关闭所有客户端连接
-            foreach (var item in list)
+            this._listener.Stop();//停止监听客户端
+            var sessions = GetAllSession();//关闭所有客户端连接
+            foreach (var session in sessions)
             {
-                item.Close();
+                session.Close();
             }
         }
 
@@ -71,19 +84,19 @@ namespace SmallSocket.SocketEngine
         /// 分发客户端
         /// </summary>
         /// <param name="client"></param>
-        public void FetchClient(TcpClient client)
+        internal void FetchClient(TcpClient client)
         {
-            servers[i % servers.Length].Add(client);
-            i++;
+            this._appChildServers[this.i % _appChildServers.Length].Add(client);
+            this.i++;
         }
 
         /// <summary>
         /// 注册会话
         /// </summary>
         /// <param name="session">会话</param>
-        public void RegisterSession(AppSession session)
+        internal void RegisterSession(AppSession session)
         {
-            appSessions.TryAdd(session.Key, session);
+            this._appSessions.TryAdd(session.Key, session);
         }
 
         /// <summary>
@@ -93,7 +106,7 @@ namespace SmallSocket.SocketEngine
         public void RemoveSession(Guid key)
         {
             AppSession session = null;
-            appSessions.TryRemove(key, out session);
+            this._appSessions.TryRemove(key, out session);
         }
 
         /// <summary>
@@ -102,7 +115,7 @@ namespace SmallSocket.SocketEngine
         /// <param name="session">会话</param>
         public void RemoveSession(AppSession session)
         {
-            RemoveSession(session.Key);
+            this.RemoveSession(session.Key);
         }
 
         /// <summary>
@@ -111,7 +124,7 @@ namespace SmallSocket.SocketEngine
         /// <returns></returns>
         public int GetCount()
         {
-            return appSessions.Count;
+            return this._appSessions.Count;
         }
 
         /// <summary>
@@ -122,7 +135,7 @@ namespace SmallSocket.SocketEngine
         public AppSession GetSession(Guid key)
         {
             AppSession session = null;
-            appSessions.TryGetValue(key, out session);
+            this._appSessions.TryGetValue(key, out session);
             return session;
         }
 
@@ -132,16 +145,7 @@ namespace SmallSocket.SocketEngine
         /// <returns></returns>
         public IEnumerable<AppSession> GetAllSession()
         {
-            return appSessions.Values;
-        }
-
-        public void CloseSession(Guid key)
-        {
-            AppSession session = null;
-            if (appSessions.TryGetValue(key, out session))
-            {
-                session.Close();
-            }
+            return this._appSessions.Values;
         }
 
     }

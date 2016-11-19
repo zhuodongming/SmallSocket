@@ -1,4 +1,5 @@
-﻿using System;
+﻿using SmallSocket.SocketEngine.Interfaces;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -6,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SmallSocket.SocketEngine
 {
-    public class UdpSocketListener : ISocketListener
+    internal sealed class UdpSocketListener : ISocketListener
     {
         public IPEndPoint EndPoint
         {
