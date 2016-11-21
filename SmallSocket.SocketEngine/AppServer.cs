@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmallSocket.SocketEngine
@@ -14,15 +15,7 @@ namespace SmallSocket.SocketEngine
     /// </summary>
     public sealed class AppServer
     {
-        #region 单例设计模式
-        private AppServer() { }
-
-        private static readonly AppServer _appServer = new AppServer();
-        public static AppServer GetAppServer()
-        {
-            return _appServer;
-        }
-        #endregion
+        public static AppServer Instance { get; } = new AppServer();
 
         private readonly ConcurrentDictionary<Guid, AppSession> _appSessions = new ConcurrentDictionary<Guid, AppSession>();
         private long i = 0;
@@ -30,9 +23,26 @@ namespace SmallSocket.SocketEngine
         private ServerConfiguration _config = null;
         private ISocketListener _listener = null;
 
+        private int _state = 0;
+        private const int _none = 0;
+        private const int _listening = 1;
+        private const int _disposed = 5;
+
+        public bool IsListening { get { return _state == _listening; } }
+
         //启动服务
         public void Start(ServerConfiguration config)
         {
+            int origin = Interlocked.CompareExchange(ref _state, _listening, _none);
+            if (origin == _disposed)
+            {
+                throw new ObjectDisposedException(GetType().FullName);
+            }
+            else if (origin != _none)
+            {
+                throw new InvalidOperationException("This server has already started.");
+            }
+
             if (config == null)
             {
                 throw new ArgumentNullException("config", "argument config is not null");
@@ -72,7 +82,18 @@ namespace SmallSocket.SocketEngine
         /// </summary>
         public void Close()
         {
-            this._listener.Stop();//停止监听客户端
+            int origin = Interlocked.Exchange(ref _state, _disposed);
+            if (origin == _disposed)
+            {
+                return;
+            }
+            else if (origin == _none)
+            {
+                throw new InvalidOperationException("This server has not started.");
+            }
+
+            this._listener.Stop();//停止监听
+
             var sessions = GetAllSession();//关闭所有客户端连接
             foreach (var session in sessions)
             {

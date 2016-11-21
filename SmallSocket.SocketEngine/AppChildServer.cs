@@ -61,7 +61,7 @@ namespace SmallSocket.SocketEngine
                     client.SendTimeout = 60000;//60秒
                     client.ReceiveTimeout = 60000;//60秒
                     AppSession appSession = new AppSession(Guid.NewGuid(), client, this._config);//创建会话
-                    AppServer.GetAppServer().RegisterSession(appSession);//注册会话
+                    AppServer.Instance.RegisterSession(appSession);//注册会话
                     appSession.Start();
                 }
                 else

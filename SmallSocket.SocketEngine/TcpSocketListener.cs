@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmallSocket.SocketEngine
@@ -23,10 +24,9 @@ namespace SmallSocket.SocketEngine
             Listener();
         }
 
-        public async void Stop()
+        public void Stop()
         {
             this._tcpListener.Stop();
-            await _config.Dispatcher.OnListenerStoped(this);
         }
 
         private async void Listener()
@@ -35,21 +35,21 @@ namespace SmallSocket.SocketEngine
             {
                 this._tcpListener = new TcpListener(_config.ListenedEndPoint);
                 this._tcpListener.AllowNatTraversal(_config.AllowNatTraversal);
-                //this._tcpListener.Server.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);//启用端口共享
                 this._tcpListener.Start(_config.PendingConnectionBacklog);
                 await _config.Dispatcher.OnListenerStarted(this);
 
-                while (true)
+                while (AppServer.Instance.IsListening)
                 {
                     var tcpClient = await this._tcpListener.AcceptTcpClientAsync();//开始监听socket客户端
 
-                    AppServer.GetAppServer().FetchClient(tcpClient);
+                    AppServer.Instance.FetchClient(tcpClient);
                 }
             }
             catch (Exception ex)
             {
                 await _config.Dispatcher.OnListenerError(this, ex);
             }
+            await _config.Dispatcher.OnListenerStoped(this);
         }
 
     }

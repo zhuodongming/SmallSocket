@@ -11,12 +11,10 @@ namespace SmallSocket.SocketEngine
     {
         static void Main(string[] args)
         {
-            //Start appServer
-            AppServer appServer = AppServer.GetAppServer();
-
+            //Start AppServer
             SimpleServerMessageDispatcher dispatcher = new SimpleServerMessageDispatcher();
             ServerConfiguration config = new ServerConfiguration(dispatcher);
-            appServer.Start(config);
+            AppServer.Instance.Start(config);
             Console.WriteLine("The server started successfully, press 'quit' to stop it!");
 
             while (!Console.ReadLine().ToLower().Trim().Equals("quit"))
@@ -24,8 +22,8 @@ namespace SmallSocket.SocketEngine
                 //Console.WriteLine();
             }
 
-            //Stop the appServer
-            appServer.Close();
+            //Stop the AppServer
+            AppServer.Instance.Close();
             Console.WriteLine("The server was stopped!");
         }
     }
